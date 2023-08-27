@@ -49,9 +49,29 @@ app.get("/urls/:id", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
+app.get("/u/:id", (req, res) => {
+  const longURL = urlDatabase[req.params.id];
+  if(!longURL) {
+    res.status(404).send("Not Found");
+  } else {
+    res.redirect(longURL);
+  }
+});
+
 app.post("/urls", (req, res) => {
-  console.log(req.body);
-  res.send("Ok");
+  const longURL = req.body.longURL;
+  if (longURL) {
+    const id = generateRandomString();
+
+    // Save new id-longURL pair to database
+    urlDatabase[id] = longURL;
+
+    // Redirect to /urls/:id
+    res.redirect(`urls/${id}`);
+
+  }
+  console.log(urlDatabase);
+  
 });
 
 
