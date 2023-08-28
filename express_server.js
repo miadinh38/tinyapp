@@ -77,10 +77,18 @@ app.post("/urls/:id/delete", (req, res) => {
   if (urlDatabase.hasOwnProperty(id)) {
     delete urlDatabase[id];
   }
-  // res.send("Your URL has been removed")
-  res.redirect("/urls");
+  res.redirect(`/urls`);
 });
 
+app.post("/urls/:id/edit", (req,res) => {
+  const id = req.params.id;
+  const longURL = req.body.longURL;
+
+  if (urlDatabase.hasOwnProperty(id)) {
+    urlDatabase[id].longURL = longURL;
+  }
+  res.redirect(`/urls`); 
+});
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}`);
