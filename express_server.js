@@ -68,10 +68,17 @@ app.post("/urls", (req, res) => {
 
     // Redirect to /urls/:id
     res.redirect(`urls/${id}`);
-
   }
   console.log(urlDatabase);
-  
+});
+
+app.post("/urls/:id/delete", (req, res) => {
+  const id = req.params.id;
+  if (urlDatabase.hasOwnProperty(id)) {
+    delete urlDatabase[id];
+  }
+  // res.send("Your URL has been removed")
+  res.redirect("/urls");
 });
 
 
