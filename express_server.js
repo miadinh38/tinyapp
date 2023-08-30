@@ -24,9 +24,14 @@ function generateRandomString() {
 }
 
 
+/******************** Middleware ********************/
+
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+/****************************************************/
+
 
 
 app.get("/", (req, res) => {
@@ -42,7 +47,7 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const username = req.cookies.username || "Guest";
+  const username = req.cookies["username"];
 
   const templateVars = { 
     urls: urlDatabase,
