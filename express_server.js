@@ -161,22 +161,9 @@ app.post("/register", (req, res) => {
   const newUser = { ...req.body };
   newUser.id = generateRandomString();
 
-  // add a new user to users object
-  users[newUser.id] = newUser;
+  const { email, password } = req.body;
 
-  // check if email or password is empty
-  if (newUser.email === '' || newUser.password === '') {
-    res.status(400).send("Email or Password is empty!")
-  }
-  
   // check if the user exists
-  // const foundUser = user.find(user => {
-  //   return user.email = newUser.email;
-  // })
-  // if (foundUser) {
-  //   return res.status(400).send("User already exists!");
-  // }
-
   const getUserByEmail = function(email) {
     for (const userId in users) {
       if (email === users[userId].email) {
@@ -184,14 +171,19 @@ app.post("/register", (req, res) => {
       }
     }
     return false;
-  };
-
-  const { email, password } = req.body;
+  }; 
 
   if(getUserByEmail(email)) {
     return res.status(400).send("User already exists!");
   }
 
+  // check if email or password is empty
+  if (newUser.email === '' || newUser.password === '') {
+    res.status(400).send("Email or Password is empty!")
+  }
+
+  // add a new user to users object
+  users[newUser.id] = newUser;
 
   res.cookie('user_id', newUser.id);
   console.log(users);
