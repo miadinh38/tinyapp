@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const { get } = require("request");
 
 const app = express();
 const PORT = 8080;
@@ -154,7 +155,39 @@ app.post("/logout", (req, res) => {
 app.post("/register", (req, res) => {
   const newUser = { ...req.body };
   newUser.id = generateRandomString();
+
+  // add a new user to users object
   users[newUser.id] = newUser;
+
+  // check if email or password is empty
+  if (newUser.email === '' || newUser.password === '') {
+    res.status(400).send("Email or Password is empty!")
+  }
+  
+  // check if the user exists
+  // const foundUser = user.find(user => {
+  //   return user.email = newUser.email;
+  // })
+  // if (foundUser) {
+  //   return res.status(400).send("User already exists!");
+  // }
+
+  const getUserByEmail = function(email) {
+    for (const userId in users) {
+      if (email === users[userId].email) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const { email, password } = req.body;
+
+  if(getUserByEmail(email)) {
+    return res.status(400).send("User already exists!");
+  }
+
+
   res.cookie('user_id', newUser.id);
   console.log(users);
   res.redirect('urls');
