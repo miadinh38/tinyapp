@@ -39,6 +39,17 @@ function generateRandomString() {
   return randomString;
 }
 
+const getUserByEmail = function(email) {
+  for (const userId in users) {
+    if (email === users[userId].email) {
+      return true;
+    }
+  }
+  return false;
+}; 
+
+
+
 
 /*************************************  MIDDLEWARE *************************************/
 /***************************************************************************************/
@@ -72,18 +83,31 @@ app.get("/urls", (req, res) => {
 
   const templateVars = { 
     urls: urlDatabase,
-    user: user
+    user: user // Pass the user information to the template
   };
   
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const userId = req.cookies.user_id;
+  const user = users[userId];
+  
+  const templateVars = {
+    user: user 
+  };
+  res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:id", (req, res) => {
-  const templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id] };
+  const userId = req.cookies.user_id;
+  const user = users[userId];
+  
+  const templateVars = { 
+    id: req.params.id, 
+    longURL: urlDatabase[req.params.id],
+    user: user
+  };
   res.render("urls_show", templateVars);
 });
 
@@ -97,11 +121,24 @@ app.get("/u/:id", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  res.render("register");
+  const userId = req.cookies.user_id;
+  const user = users[userId];
+
+  const templateVars = {
+    user: user 
+  };
+  res.render("register", templateVars);
 });
 
 app.get("/login", (req, res) => {
-  res.render("login");
+  const userId = req.cookies.user_id;
+  const user = users[userId];
+
+  const templateVars = {
+    user: user 
+  };
+  
+  res.render("login", templateVars);
 });
 
 
@@ -143,17 +180,36 @@ app.post("/urls/:id/edit", (req,res) => {
 
 // Handle login form submission
 app.post("/login", (req, res) => {
-  const { username } = req.body;
-  const user = users[username];
+  const { email, password } = req.body;
 
-  res.cookie('user_id', user.id);
+  // Handle error when a user with the email can't be found
+  if(!getUserByEmail(email)) {
+    return res.status(403).send("Your email is incorrect");
+  }
+
+  // Find the user
+  let foundUser = null;
+  for (const userId in users) {
+    if (getUserByEmail) {
+      foundUser = users[userId];
+      break;
+    }
+  }
+
+  // Handle error when a user with the password doesn't match
+  if(password !== foundUser.password) {
+    return res.status(403).send("Your password is incorrect");
+  }
+
+
+  res.cookie('user_id', foundUser.id);
   res.redirect('/urls');
 });
 
 // Implement logout endpoint and clear coookies
 app.post("/logout", (req, res) => {
   res.clearCookie('user_id');
-  res.redirect('/urls');
+  res.redirect('/login');
 });
 
 // Handle registration form submission
@@ -164,15 +220,6 @@ app.post("/register", (req, res) => {
   const { email, password } = req.body;
 
   // check if the user exists
-  const getUserByEmail = function(email) {
-    for (const userId in users) {
-      if (email === users[userId].email) {
-        return true;
-      }
-    }
-    return false;
-  }; 
-
   if(getUserByEmail(email)) {
     return res.status(400).send("User already exists!");
   }
