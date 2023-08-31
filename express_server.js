@@ -13,6 +13,21 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = {
+  userRandomID: {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "purple-monkey-dinosaur",
+  },
+  user2RandomID: {
+    id: "user2RandomID",
+    email: "user2@example.com",
+    password: "dishwasher-funk",
+  },
+};
+
+
+
 function generateRandomString() {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let randomString = "";
@@ -24,13 +39,17 @@ function generateRandomString() {
 }
 
 
-/******************** Middleware ********************/
+/*************************************  MIDDLEWARE *************************************/
+/***************************************************************************************/
+
 
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-/****************************************************/
+/***************************************************************************************/
+/***************************************************************************************/
+
 
 
 
@@ -47,11 +66,12 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const username = req.cookies["username"];
+  const userId = req.cookies.user_id;
+  const user = users[userId];
 
   const templateVars = { 
     urls: urlDatabase,
-    username: username
+    user: user
   };
   
   res.render("urls_index", templateVars);
@@ -76,10 +96,12 @@ app.get("/u/:id", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  res.render("urls_register");
+  res.render("register");
 });
 
-/************************/
+/***************************************************************************************/
+/********************************   POST ENDPOINTS  ************************************/
+
 
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
@@ -116,18 +138,32 @@ app.post("/urls/:id/edit", (req,res) => {
 // Handle login form submission
 app.post("/login", (req, res) => {
   const { username } = req.body;
-  //set the cookie named "username"
-  res.cookie('username', username)
-  //redirect back to /urls page
+  const user = users[username];
+
+  res.cookie('user_id', user.id);
   res.redirect('/urls');
 });
 
 // Implement logout endpoint and clear coookies
 app.post("/logout", (req, res) => {
-  res.clearCookie('username');
+  res.clearCookie('user_id');
   res.redirect('/urls');
 });
+
+// Handle registration form submission
+app.post("/register", (req, res) => {
+  const newUser = { ...req.body };
+  newUser.id = generateRandomString();
+  users[newUser.id] = newUser;
+  res.cookie('user_id', newUser.id);
+  console.log(users);
+  res.redirect('urls');
+});
+
+
+
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}`);
 });
+
