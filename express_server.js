@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const { get } = require("request");
 const bcrypt = require("bcryptjs");
+const cookieSession = require('cookie-session')
+const { getUserByEmail } = require("./helpers.js")
 
 
 const app = express();
@@ -16,16 +18,21 @@ app.set("view engine", "ejs");
 //   "9sm5xK": "http://www.google.com"
 // };
 
+const password1 = "purple-monkey-dinosaur"; 
+const hashedPassword1 = bcrypt.hashSync(password1, 10);
+const password2 = "dishwasher-funk"; 
+const hashedPassword2 = bcrypt.hashSync(password2, 10);
+
 const users = {
   userRandomID: {
     id: "userRandomID",
     email: "user@example.com",
-    password: "purple-monkey-dinosaur",
+    password: hashedPassword1,
   },
   user2RandomID: {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "dishwasher-funk",
+    password: hashedPassword2,
   },
 };
 
@@ -52,30 +59,26 @@ function generateRandomString() {
   return randomString;
 }
 
-const getUserByEmail = function(email) {
-  for (const userId in users) {
-    if (email === users[userId].email) {
-      return users[userId];
-    }
-  }
-  return null;
-}; 
 
-
-
-
-/*************************************  MIDDLEWARE *************************************/
-/***************************************************************************************/
+/*************************  MIDDLEWARE ****************************/
+/******************************************************************/
 
 
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: ['535435354bdbtrtbrt45'],
+
+  // Cookie Options
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}))
 
 
 
-/***************************************************************************************/
-/*********************************   GET ENDPOINTS  ************************************/
+/*******************************************************************/
+/***********************   GET ENDPOINTS  **************************/
 
 
 app.get("/", (req, res) => {
@@ -91,7 +94,7 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   const user = users[userId];
 
   const urlsForUser = function(id) {
@@ -105,9 +108,8 @@ app.get("/urls", (req, res) => {
   };
 
   // redirect to /login if user not logged in
-  if(!userId) {
-    res.status(403).send("You have to log in first")
-    return res.redirect("/login");
+  if(!user) {
+    return res.status(403).send("You have to log in first. <a href='/login'>Click here to login</a>"); 
   }
   
   const userUrls = urlsForUser(userId);
@@ -122,7 +124,7 @@ app.get("/urls", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   const user = users[userId];
   
   const templateVars = {
@@ -138,14 +140,14 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   const user = users[userId];
   const id = req.params.id;
   const url = urlDatabase[id];
 
 
   if(!userId) {
-    return res.status(403).send("You have to log in first");
+    return res.status(403).send("You have to log in first. <a href='/login'>Click here to login</a>");
   }
 
   if (!url) {
@@ -176,7 +178,7 @@ app.get("/u/:id", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   const user = users[userId];
 
   const templateVars = {
@@ -184,8 +186,8 @@ app.get("/register", (req, res) => {
   };
 
   // redirect to /urls if user is already logged in
-  if(userId) {
-    res.redirect("/urls");
+  if(user) {
+    return res.redirect("/urls");
   }
 
   res.render("register", templateVars);
@@ -193,7 +195,7 @@ app.get("/register", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   const user = users[userId];
 
   const templateVars = {
@@ -201,8 +203,8 @@ app.get("/login", (req, res) => {
   };
 
   // redirect to /urls if user is already logged in
-  if(userId) {
-    res.redirect("/urls");
+  if(user) {
+    return res.redirect("/urls");
   }
 
   // render the template if the user is not logged in
@@ -212,13 +214,13 @@ app.get("/login", (req, res) => {
 
 
 
-/***************************************************************************************/
-/********************************   POST ENDPOINTS  ************************************/
+/***************************************************************/
+/********************   POST ENDPOINTS  ************************/
 
 
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
 
   if (!userId) {
     return res.status(403).send("You must be logged in to shorten the URLs");
@@ -235,13 +237,13 @@ app.post("/urls", (req, res) => {
 
 
     // Redirect to /urls/:id
-    res.redirect(`urls/${id}`);
+    res.redirect(`/urls`);
   }
   console.log(urlDatabase);
 });
 
 app.post("/urls/:id/delete", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   const id = req.params.id;
   const url = urlDatabase[id];
 
@@ -267,7 +269,7 @@ app.post("/urls/:id/delete", (req, res) => {
 });
 
 app.post("/urls/:id/edit", (req,res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   const id = req.params.id;
   const url = urlDatabase[id];
 
@@ -296,20 +298,24 @@ app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
   // Find the user
-  const foundUser = getUserByEmail(email);
+  const foundUser = getUserByEmail(email, users);
 
   // Handle error when the email can't be found or password doesn't match
   if(!foundUser || !bcrypt.compareSync(password, foundUser.password)) {
     return res.status(403).send("Incorrect email or password");
   }  
 
-  res.cookie('user_id', foundUser.id);
+  // Set the cookie
+  // res.cookie('user_id', foundUser.id);
+  req.session.user_id = foundUser.id;
+
   res.redirect('/urls');
 });
 
 // Implement logout endpoint and clear coookies
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id');
+  // res.clearCookie('user_id');
+  req.session.user_id = null;
   res.redirect('/login');
 });
 
@@ -325,21 +331,23 @@ app.post("/register", (req, res) => {
   newUser.password = hashedPassword;
 
   // check if the user exists
-  if(getUserByEmail(email)) {
+  if(getUserByEmail(email, users)) {
     return res.status(400).send("User already exists!");
   }
 
   // check if email or password is empty
   if (newUser.email === '' || newUser.password === '') {
-    res.status(400).send("Email or Password is empty!")
+    return res.status(400).send("Email or Password is empty!")
   }
 
   // add a new user to users object
   users[newUser.id] = newUser;
 
-  res.cookie('user_id', newUser.id);
+  // res.cookie('user_id', newUser.id);
+  req.session.user_id = newUser.id;
   console.log(users);
-  res.redirect('urls');
+
+  res.redirect('/urls');
 });
 
 
