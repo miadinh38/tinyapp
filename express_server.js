@@ -9,10 +9,10 @@ const PORT = 8080;
 app.set("view engine", "ejs");
 
 
-const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
-};
+// const urlDatabase = {
+//   "b2xVn2": "http://www.lighthouselabs.ca",
+//   "9sm5xK": "http://www.google.com"
+// };
 
 const users = {
   userRandomID: {
@@ -24,6 +24,17 @@ const users = {
     id: "user2RandomID",
     email: "user2@example.com",
     password: "dishwasher-funk",
+  },
+};
+
+const urlDatabase = {
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
   },
 };
 
@@ -81,17 +92,31 @@ app.get("/urls", (req, res) => {
   const userId = req.cookies.user_id;
   const user = users[userId];
 
-  const templateVars = { 
-    urls: urlDatabase,
-    user: user // Pass the user information to the template
+  const urlsForUser = function(id) {
+    const userUrls = {};
+    for (const urlId in urlDatabase) {
+      if (urlDatabase[urlId].userID === id) {
+        userUrls[urlId] = urlDatabase[urlId];
+      }
+    }
+    return userUrls;
   };
 
   // redirect to /login if user not logged in
   if(!userId) {
+    res.status(403).send("You have to log in first")
     return res.redirect("/login");
   }
   
+  const userUrls = urlsForUser(userId);
+
+  const templateVars = { 
+    urls: userUrls,
+    user: user // Pass the user information to the template
+  };
+
   res.render("urls_index", templateVars);
+
 });
 
 app.get("/urls/new", (req, res) => {
@@ -106,17 +131,32 @@ app.get("/urls/new", (req, res) => {
   if(!userId) {
     res.redirect("/login");
   }
-
+  
   res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:id", (req, res) => {
   const userId = req.cookies.user_id;
   const user = users[userId];
+  const id = req.params.id;
+  const url = urlDatabase[id];
+
+
+  if(!userId) {
+    return res.status(403).send("You have to log in first");
+  }
+
+  if (!url) {
+    return res.status(404).send("URL not found");
+  }
+
+  if (url.userID !== userId) {
+    return res.status(403).send("You do not have permission to access this URL");
+  }
   
   const templateVars = { 
-    id: req.params.id, 
-    longURL: urlDatabase[req.params.id],
+    id: id, 
+    longURL: urlDatabase[id].longURL,
     user: user
   };
   res.render("urls_show", templateVars);
@@ -124,7 +164,7 @@ app.get("/urls/:id", (req, res) => {
 
 app.get("/u/:id", (req, res) => {
   const id = req.params.id;
-  const longURL = urlDatabase[id];
+  const longURL = urlDatabase[id].longUrl.longUrl;
 
   if(!longURL) {
     res.status(404).send("The short URL does not exist");
@@ -186,7 +226,11 @@ app.post("/urls", (req, res) => {
     const id = generateRandomString();
 
     // Save new id-longURL pair to database
-    urlDatabase[id] = longURL;
+    urlDatabase[id] = {
+      longURL: longURL,
+      userID: userId
+    };
+
 
     // Redirect to /urls/:id
     res.redirect(`urls/${id}`);
@@ -195,7 +239,25 @@ app.post("/urls", (req, res) => {
 });
 
 app.post("/urls/:id/delete", (req, res) => {
+  const userId = req.cookies.user_id;
   const id = req.params.id;
+  const url = urlDatabase[id];
+
+  // Check if the URL exists
+  if (!url) {
+    return res.status(404).send("URL not found");
+  }
+
+  // Check if the user is logged in
+  if (!userId) {
+    return res.status(403).send("You must be logged in to delete URLs");
+  }
+
+  // Check if the user owns the URL
+  if (url.userID !== userId) {
+    return res.status(403).send("You do not have permission to delete this URL");
+  }
+  
   if (urlDatabase.hasOwnProperty(id)) {
     delete urlDatabase[id];
   }
@@ -203,12 +265,28 @@ app.post("/urls/:id/delete", (req, res) => {
 });
 
 app.post("/urls/:id/edit", (req,res) => {
+  const userId = req.cookies.user_id;
   const id = req.params.id;
-  const longURL = req.body.longURL;
+  const url = urlDatabase[id];
 
-  urlDatabase[id] = longURL;
+  if (!url) {
+    return res.status(404).send("URL not found");
+  }
 
-  res.redirect('/urls');
+  if (!userId) {
+    return res.status(403).send("You must be logged in to edit URLs");
+  }
+
+  if (url.userID !== userId) {
+    return res.status(403).send("You do not have permission to edit this URL");
+  }
+
+  // Update the longURL in the urlDatabase
+  const newLongURL = req.body.longURL;
+  urlDatabase[id].longURL = newLongURL;
+
+  // Redirect to /urls or any other appropriate page after editing
+  res.redirect("/urls");
 });
 
 // Handle login form submission
