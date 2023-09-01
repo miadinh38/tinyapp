@@ -42,10 +42,10 @@ function generateRandomString() {
 const getUserByEmail = function(email) {
   for (const userId in users) {
     if (email === users[userId].email) {
-      return true;
+      return users[userId];
     }
   }
-  return false;
+  return null;
 }; 
 
 
@@ -59,10 +59,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-/***************************************************************************************/
-/***************************************************************************************/
 
 
+/***************************************************************************************/
+/*********************************   GET ENDPOINTS  ************************************/
 
 
 app.get("/", (req, res) => {
@@ -85,6 +85,11 @@ app.get("/urls", (req, res) => {
     urls: urlDatabase,
     user: user // Pass the user information to the template
   };
+
+  // redirect to /login if user not logged in
+  if(!userId) {
+    return res.redirect("/login");
+  }
   
   res.render("urls_index", templateVars);
 });
@@ -96,6 +101,12 @@ app.get("/urls/new", (req, res) => {
   const templateVars = {
     user: user 
   };
+
+  // redirect to /login if user not logged in
+  if(!userId) {
+    res.redirect("/login");
+  }
+
   res.render("urls_new", templateVars);
 });
 
@@ -112,9 +123,11 @@ app.get("/urls/:id", (req, res) => {
 });
 
 app.get("/u/:id", (req, res) => {
-  const longURL = urlDatabase[req.params.id];
+  const id = req.params.id;
+  const longURL = urlDatabase[id];
+
   if(!longURL) {
-    res.status(404).send("Not Found");
+    res.status(404).send("The short URL does not exist");
   } else {
     res.redirect(longURL);
   }
@@ -127,7 +140,14 @@ app.get("/register", (req, res) => {
   const templateVars = {
     user: user 
   };
+
+  // redirect to /urls if user is already logged in
+  if(userId) {
+    res.redirect("/urls");
+  }
+
   res.render("register", templateVars);
+
 });
 
 app.get("/login", (req, res) => {
@@ -137,9 +157,17 @@ app.get("/login", (req, res) => {
   const templateVars = {
     user: user 
   };
-  
-  res.render("login", templateVars);
+
+  // redirect to /urls if user is already logged in
+  if(userId) {
+    res.redirect("/urls");
+  }
+
+  // render the template if the user is not logged in
+  res.render("login", templateVars);  
 });
+
+
 
 
 /***************************************************************************************/
@@ -148,6 +176,12 @@ app.get("/login", (req, res) => {
 
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
+  const userId = req.cookies.user_id;
+
+  if (!userId) {
+    return res.status(403).send("You must be logged in to shorten the URLs");
+  }
+
   if (longURL) {
     const id = generateRandomString();
 
@@ -172,10 +206,9 @@ app.post("/urls/:id/edit", (req,res) => {
   const id = req.params.id;
   const longURL = req.body.longURL;
 
-  if (urlDatabase.hasOwnProperty(id)) {
-    urlDatabase[id].longURL = longURL;
-  }
-  res.redirect(`/urls`); 
+  urlDatabase[id] = longURL;
+
+  res.redirect('/urls');
 });
 
 // Handle login form submission
@@ -188,13 +221,7 @@ app.post("/login", (req, res) => {
   }
 
   // Find the user
-  let foundUser = null;
-  for (const userId in users) {
-    if (getUserByEmail) {
-      foundUser = users[userId];
-      break;
-    }
-  }
+  const foundUser = getUserByEmail(email);
 
   // Handle error when a user with the password doesn't match
   if(password !== foundUser.password) {
