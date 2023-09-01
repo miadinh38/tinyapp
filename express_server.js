@@ -2,6 +2,8 @@ const express = require("express");
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const { get } = require("request");
+const bcrypt = require("bcryptjs");
+
 
 const app = express();
 const PORT = 8080;
@@ -131,7 +133,7 @@ app.get("/urls/new", (req, res) => {
   if(!userId) {
     res.redirect("/login");
   }
-  
+
   res.render("urls_new", templateVars);
 });
 
@@ -293,19 +295,13 @@ app.post("/urls/:id/edit", (req,res) => {
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
-  // Handle error when a user with the email can't be found
-  if(!getUserByEmail(email)) {
-    return res.status(403).send("Your email is incorrect");
-  }
-
   // Find the user
   const foundUser = getUserByEmail(email);
 
-  // Handle error when a user with the password doesn't match
-  if(password !== foundUser.password) {
-    return res.status(403).send("Your password is incorrect");
-  }
-
+  // Handle error when the email can't be found or password doesn't match
+  if(!foundUser || !bcrypt.compareSync(password, foundUser.password)) {
+    return res.status(403).send("Incorrect email or password");
+  }  
 
   res.cookie('user_id', foundUser.id);
   res.redirect('/urls');
@@ -323,6 +319,10 @@ app.post("/register", (req, res) => {
   newUser.id = generateRandomString();
 
   const { email, password } = req.body;
+  const hashedPassword = bcrypt.hashSync(password, 10);
+
+  // replace the plain text password with the hashed password
+  newUser.password = hashedPassword;
 
   // check if the user exists
   if(getUserByEmail(email)) {
