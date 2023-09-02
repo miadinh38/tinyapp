@@ -1,7 +1,6 @@
 const express = require("express");
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
-const { get } = require("request");
 const bcrypt = require("bcryptjs");
 const cookieSession = require('cookie-session');
 const { getUserByEmail, generateRandomString } = require("./helpers");
