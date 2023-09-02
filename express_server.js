@@ -3,67 +3,17 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const { get } = require("request");
 const bcrypt = require("bcryptjs");
-const cookieSession = require('cookie-session')
-const { getUserByEmail } = require("./helpers.js")
-
-
+const cookieSession = require('cookie-session');
+const { getUserByEmail, generateRandomString } = require("./helpers");
+const { PORT, users, urlDatabase } = require("./data");
 const app = express();
-const PORT = 8080;
 
-app.set("view engine", "ejs");
-
-
-// const urlDatabase = {
-//   "b2xVn2": "http://www.lighthouselabs.ca",
-//   "9sm5xK": "http://www.google.com"
-// };
-
-const password1 = "purple-monkey-dinosaur"; 
-const hashedPassword1 = bcrypt.hashSync(password1, 10);
-const password2 = "dishwasher-funk"; 
-const hashedPassword2 = bcrypt.hashSync(password2, 10);
-
-const users = {
-  userRandomID: {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: hashedPassword1,
-  },
-  user2RandomID: {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: hashedPassword2,
-  },
-};
-
-const urlDatabase = {
-  b6UTxQ: {
-    longURL: "https://www.tsn.ca",
-    userID: "aJ48lW",
-  },
-  i3BoGr: {
-    longURL: "https://www.google.ca",
-    userID: "aJ48lW",
-  },
-};
-
-
-
-function generateRandomString() {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let randomString = "";
-  for (let i = 0; i < 6; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    randomString += characters.charAt(randomIndex);
-  }
-  return randomString;
-}
 
 
 /*************************  MIDDLEWARE ****************************/
 /******************************************************************/
 
-
+app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -81,16 +31,8 @@ app.use(cookieSession({
 /***********************   GET ENDPOINTS  **************************/
 
 
-app.get("/", (req, res) => {
-  res.send("Hello!");
-});
-
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
-});
-
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
 app.get("/urls", (req, res) => {
@@ -235,9 +177,8 @@ app.post("/urls", (req, res) => {
       userID: userId
     };
 
-
     // Redirect to /urls/:id
-    res.redirect(`/urls`);
+    res.redirect(`/urls/${id}`);
   }
   console.log(urlDatabase);
 });
@@ -296,8 +237,6 @@ app.post("/urls/:id/edit", (req,res) => {
 // Handle login form submission
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
-
-  // Find the user
   const foundUser = getUserByEmail(email, users);
 
   // Handle error when the email can't be found or password doesn't match
@@ -306,7 +245,6 @@ app.post("/login", (req, res) => {
   }  
 
   // Set the cookie
-  // res.cookie('user_id', foundUser.id);
   req.session.user_id = foundUser.id;
 
   res.redirect('/urls');
@@ -351,7 +289,8 @@ app.post("/register", (req, res) => {
 });
 
 
-
+/***************************************************************/
+/************************** LAUNCH *****************************/
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}`);
