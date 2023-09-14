@@ -101,7 +101,7 @@ app.get("/urls/:id", (req, res) => {
   
   const templateVars = { 
     id: id, 
-    longURL: urlDatabase[id].longURL,
+    longURL: url.longURL,
     user: user
   };
   res.render("urls_show", templateVars);
@@ -109,11 +109,12 @@ app.get("/urls/:id", (req, res) => {
 
 app.get("/u/:id", (req, res) => {
   const id = req.params.id;
-  const longURL = urlDatabase[id].longUrl.longUrl;
+  const url = urlDatabase[id];
 
-  if(!longURL) {
+  if (!url) {
     res.status(404).send("The short URL does not exist");
   } else {
+    const longURL = url.longURL; 
     res.redirect(longURL);
   }
 });
@@ -251,7 +252,7 @@ app.post("/login", (req, res) => {
 
 // Implement logout endpoint and clear coookies
 app.post("/logout", (req, res) => {
-  // res.clearCookie('user_id');
+  res.clearCookie('user_id');
   req.session.user_id = null;
   res.redirect('/login');
 });
