@@ -15,7 +15,6 @@ const app = express();
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser());
 app.use(cookieSession({
   name: 'session',
   keys: ['535435354bdbtrtbrt45'],
@@ -30,10 +29,23 @@ app.use(cookieSession({
 /***********************   GET ENDPOINTS  **************************/
 
 
+// Localhost Landing Page -
+app.get("/", (req, res) => {
+  const userId = req.session.user_id;
+
+  // Redirect to /urls if user is logged in; otherwise, redirect to /login
+  if (userId) {
+    res.redirect("urls"); 
+  } else {
+    res.redirect("/login");
+  }
+});
+
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
+// App Homepage - Render urls_index
 app.get("/urls", (req, res) => {
   const userId = req.session.user_id;
   const user = users[userId];
@@ -48,7 +60,7 @@ app.get("/urls", (req, res) => {
     return userUrls;
   };
 
-  // redirect to /login if user not logged in
+  // Redirect to /login if user not logged in
   if(!user) {
     return res.status(403).send("You have to log in first. <a href='/login'>Click here to login</a>"); 
   }
@@ -64,6 +76,8 @@ app.get("/urls", (req, res) => {
 
 });
 
+
+// New URL form - GET
 app.get("/urls/new", (req, res) => {
   const userId = req.session.user_id;
   const user = users[userId];
@@ -80,6 +94,8 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", templateVars);
 });
 
+
+// Render urls_show page
 app.get("/urls/:id", (req, res) => {
   const userId = req.session.user_id;
   const user = users[userId];
@@ -92,7 +108,7 @@ app.get("/urls/:id", (req, res) => {
   }
 
   if (!url) {
-    return res.status(404).send("URL not found");
+    return res.status(404).send("The requested URL doesn't exist");
   }
 
   if (url.userID !== userId) {
@@ -107,6 +123,8 @@ app.get("/urls/:id", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
+
+// Redirect to new URL after submitting
 app.get("/u/:id", (req, res) => {
   const id = req.params.id;
   const url = urlDatabase[id];
@@ -119,6 +137,8 @@ app.get("/u/:id", (req, res) => {
   }
 });
 
+
+// Register - GET
 app.get("/register", (req, res) => {
   const userId = req.session.user_id;
   const user = users[userId];
@@ -136,6 +156,8 @@ app.get("/register", (req, res) => {
 
 });
 
+
+// Login - GET
 app.get("/login", (req, res) => {
   const userId = req.session.user_id;
   const user = users[userId];
@@ -160,6 +182,7 @@ app.get("/login", (req, res) => {
 /********************   POST ENDPOINTS  ************************/
 
 
+// New URL - POST
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
   const userId = req.session.user_id;
@@ -183,6 +206,8 @@ app.post("/urls", (req, res) => {
   console.log(urlDatabase);
 });
 
+
+// Delete URL - POST
 app.post("/urls/:id/delete", (req, res) => {
   const userId = req.session.user_id;
   const id = req.params.id;
@@ -209,6 +234,8 @@ app.post("/urls/:id/delete", (req, res) => {
   res.redirect(`/urls`);
 });
 
+
+// Edit URL - POST
 app.post("/urls/:id/edit", (req,res) => {
   const userId = req.session.user_id;
   const id = req.params.id;
@@ -234,7 +261,8 @@ app.post("/urls/:id/edit", (req,res) => {
   res.redirect("/urls");
 });
 
-// Handle login form submission
+
+// Login - POST
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
   const foundUser = getUserByEmail(email, users);
@@ -250,14 +278,16 @@ app.post("/login", (req, res) => {
   res.redirect('/urls');
 });
 
-// Implement logout endpoint and clear coookies
+
+// Logout - POST
 app.post("/logout", (req, res) => {
   res.clearCookie('user_id');
   req.session.user_id = null;
   res.redirect('/login');
 });
 
-// Handle registration form submission
+
+// Register - POST
 app.post("/register", (req, res) => {
   const newUser = { ...req.body };
   newUser.id = generateRandomString();
